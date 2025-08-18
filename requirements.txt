@@ -1,5 +1,7 @@
-Flask>=2.3.2
-python-dotenv>=1.0.0
-moviepy>=2.0.0
-whisper @ git+https://github.com/openai/whisper.git
-google-genai>=0.1.0
+Flask
+python-dotenv
+moviepy
+whisper
+torch
+torchaudio
+google-genai
