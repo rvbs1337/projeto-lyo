@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Vídeo Traduzido com Gemini</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #c0d6f5;
+  color: #000080;
+  padding: 20px;
+  margin: 0;
+}
+
+h2, h3 {
+  text-align: center;
+  color: #ff6600;
+  text-shadow: 1px 1px #fff;
+}
+
+.container {
+  max-width: 700px;
+  margin: auto;
+  background: #fff8dc;
+  border: 2px solid #ff6600;
+  padding: 20px;
+  border-radius: 0;
+  box-shadow: 5px 5px #888888;
+}
+
+input[type="text"], input[type="file"], select, textarea {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+  border: 2px inset #ff6600;
+  background: #ffffe0;
+  font-family: "Comic Sans MS", cursive, sans-serif;
+  font-size: 14px;
+}
+
+textarea {
+  height: 120px;
+}
+
+button {
+  padding: 10px 15px;
+  background-color: #ff6600;
+  color: #ffffff;
+  border: 2px outset #000080;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: "Comic Sans MS", cursive, sans-serif;
+  margin-top: 5px;
+}
+
+button:disabled {
+  background-color: #cccccc;
+  border: 2px inset #666666;
+  cursor: not-allowed;
+}
+
+video, audio {
+  width: 100%;
+  margin-bottom: 10px;
+  border: 2px solid #ff6600;
+  background: #f0f8ff;
+}
+
+.loader {
+  display: none;
+  text-align: center;
+  margin-top: 10px;
+}
+
+.loader div {
+  width: 18px;
+  height: 18px;
+  background-color: #000080;
+  border-radius: 50%;
+  display: inline-block;
+  animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+}
+
+.loader .bounce1 { animation-delay: -0.32s; }
+.loader .bounce2 { animation-delay: -0.16s; }
+
+@keyframes sk-bouncedelay {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1.0); }
+}
+
+#status {
+  font-weight: bold;
+  color: #ff0000;
+  margin-top: 10px;
+  text-align: center;
+  font-family: "Comic Sans MS", cursive, sans-serif;
+}
+</style>
+</head>
+<body>
+<div class="container">
+  <marquee><h2>Tradutor de Vídeo (Inglês → Português)</h2></marquee>
+
+  <label for="apiKey">API Key do Gemini:</label>
+  <input type="text" id="apiKey" placeholder="Cole sua API Key aqui"><br>
+
+  <input type="file" id="audioInput" accept="audio/*"><br>
+  <audio id="audioPlayer" controls></audio><br>
+
+  <select id="language">
+    <option value="Brazilian Portuguese">Portugues BR</option>
+    <option value="Spanish">Espanhol</option>
+    <option value="French">Frances</option>
+    <option value="Italian">Italiano</option>
+    <option value="German">Alemao</option>
+  </select>
+
+  <button id="processBtn">Transcrever e Traduzir</button>
+  <div id="status"></div>
+  <div class="loader" id="loader">
+    <div class="bounce1"></div>
+    <div class="bounce2"></div>
+    <div class="bounce3"></div>
+  </div>
+
+  <h3>Tradução para Revisão:</h3>
+  <textarea id="translatedText"></textarea>
+  <button id="ttsBtn">Gerar Áudio TTS</button>
+  <audio id="translatedAudio" controls></audio>
+</div>
+
+<script>
+const translatedText = document.getElementById("translatedText");
+const translatedAudio = document.getElementById("translatedAudio");
+const processBtn = document.getElementById("processBtn");
+const ttsBtn = document.getElementById("ttsBtn");
+const loader = document.getElementById("loader");
+const status = document.getElementById("status");
+const audioInput = document.getElementById("audioInput");
+const audioPlayer = document.getElementById("audioPlayer");
+
+audioInput.addEventListener("change", e => {
+  const file = e.target.files[0];
+  if (file) {
+    audioPlayer.src = URL.createObjectURL(file);
+    translatedText.value = "";
+    translatedAudio.src = "";
+  }
+});
+
+processBtn.addEventListener("click", async () => {
+  const file = audioInput.files[0];
+  if (!file) return alert("Selecione um arquivo de áudio primeiro.");
+
+  const language = document.getElementById("language").value || "pt";
+  const apiKey = document.getElementById("apiKey").value.trim();
+  if (!apiKey) return alert("Insira sua API Key do Gemini.");
+
+  const formData = new FormData();
+  formData.append("audio", file);
+  formData.append("ip_language", language);
+  formData.append("api_key", apiKey);
+
+  try {
+    const res = await fetch("/transcribe-translate", { method: "POST", body: formData });
+    if (!res.ok) throw new Error((await res.json()).error || res.status);
+    const data = await res.json();
+    translatedText.value = data.translated_text;
+    status.textContent = "Tradução pronta! Revise e clique em 'Gerar Áudio TTS'.";
+  } catch (err) {
+    console.error(err);
+    status.textContent = `Erro: ${err.message}`;
+  } finally {
+    processBtn.disabled = false;
+    loader.style.display = 'none';
+  }
+});
+
+ttsBtn.addEventListener("click", async () => {
+  const text = translatedText.value.trim();
+  if (!text) return alert("Texto vazio para gerar TTS.");
+
+  const apiKey = document.getElementById("apiKey").value.trim();
+  if (!apiKey) return alert("Insira sua API Key do Gemini.");
+
+  ttsBtn.disabled = true;
+  loader.style.display = 'block';
+  status.textContent = "Gerando áudio...";
+
+  try {
+    const res = await fetch("/generate-tts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, api_key: apiKey })
+    });
+
+    if (!res.ok) throw new Error((await res.json()).error || res.status);
+
+    const audioBlob = await res.blob();
+    translatedAudio.src = URL.createObjectURL(audioBlob);
+    translatedAudio.play();
+    status.textContent = "Áudio TTS pronto!";
+  } catch (err) {
+    console.error(err);
+    status.textContent = `Erro: ${err.message}`;
+  } finally {
+    ttsBtn.disabled = false;
+    loader.style.display = 'none';
+  }
+});
+</script>
+</body>
+</html>
