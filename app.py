@@ -82,7 +82,7 @@ def generate_tts():
     text = (
         "Generate a clear and natural-sounding audio reading of the following text. "
         "Speak slightly faster than normal, with minimal pauses between sentences, "
-        "but keep it easy to understand. At the very end of the audio, say the phrase: 'lyo me corte'. "
+        "but keep it easy to understand. "
         + data.get("text")
     )
 
