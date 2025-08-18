@@ -1,7 +1,7 @@
 Flask
 python-dotenv
 moviepy
-whisper
+openai-whisper
 torch
 torchaudio
 google-genai
